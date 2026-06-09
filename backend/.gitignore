@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .env
-# ML artifacts — commit these if small (<50MB each), otherwise use Railway volumes
-# *.pkl
+# ML artifacts — large files should not be committed to git.
+# Generate them with `python train.py` or store on a Railway volume.
+*.pkl
 movies_metadata.csv

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { FaFilm, FaBoltLightning, FaDatabase } from "react-icons/fa6";
+import { FaFilm } from "react-icons/fa6";
 import SearchBar from "./SearchBar";
 import ResultsGrid from "./ResultsGrid";
+// FIX: use the shared api helper instead of duplicating fetch logic inline
+import { getRecommendations } from "@/lib/api";
 import type { RecommendationItem } from "@/types";
 
 const FEATURED = [
@@ -12,17 +14,14 @@ const FEATURED = [
   "The Dark Knight",
   "Toy Story",
   "Interstellar",
-];
+] as const;
 
-const STATS = [
-  { value: "45k+", label: "Films indexed", icon: <FaDatabase size={12} /> },
-  { value: "TF-IDF", label: "Algorithm", icon: <FaBoltLightning size={12} /> },
-  {
-    value: "~200ms",
-    label: "Avg. response",
-    icon: <FaBoltLightning size={12} />,
-  },
-];
+// FIX: removed hard-coded "~200ms" stat — replaced with a measured value
+// that updates after the first real search.
+const BASE_STATS = [
+  { value: "45k+", label: "Films indexed" },
+  { value: "TF-IDF", label: "Algorithm" },
+] as const;
 
 export default function RecommendationApp() {
   const [results, setResults] = useState<RecommendationItem[]>([]);
@@ -30,6 +29,8 @@ export default function RecommendationApp() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
+  // FIX: track real response time instead of showing a hard-coded string
+  const [lastResponseMs, setLastResponseMs] = useState<number | null>(null);
 
   const handleSearch = async (title: string) => {
     if (!title.trim()) return;
@@ -38,22 +39,31 @@ export default function RecommendationApp() {
     setError(null);
     setResults([]);
     setHasSearched(true);
+
+    const t0 = performance.now();
     try {
-      const res = await fetch(
-        `/api/recommend?title=${encodeURIComponent(title)}&n=10`,
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data?.detail ?? "Something went wrong.");
-        return;
-      }
+      // FIX: use shared getRecommendations() from lib/api.ts
+      const data = await getRecommendations(title, 10);
+      setLastResponseMs(Math.round(performance.now() - t0));
       setResults(data);
-    } catch {
-      setError("Could not reach the recommendation service.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not reach the recommendation service.",
+      );
     } finally {
       setLoading(false);
     }
   };
+
+  const stats = [
+    ...BASE_STATS,
+    {
+      value: lastResponseMs !== null ? `${lastResponseMs}ms` : "...",
+      label: "Last response",
+    },
+  ];
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -116,7 +126,8 @@ export default function RecommendationApp() {
             maxWidth: 760,
           }}
         >
-          Find your next{" "}
+          Find your next
+          <br />
           <em
             style={{
               fontStyle: "italic",
@@ -153,25 +164,20 @@ export default function RecommendationApp() {
             marginBottom: "clamp(20px, 4vw, 36px)",
           }}
         >
-          {STATS.map(({ value, label, icon }) => (
+          {stats.map(({ value, label }) => (
             <div
               key={label}
               style={{ display: "flex", flexDirection: "column", gap: 4 }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ color: "var(--accent)", opacity: 0.6 }}>
-                  {icon}
-                </span>
-                <p
-                  className="font-display font-bold leading-none"
-                  style={{
-                    fontSize: "clamp(1rem, 2.5vw, 1.4rem)",
-                    color: "var(--accent)",
-                  }}
-                >
-                  {value}
-                </p>
-              </div>
+              <p
+                className="font-display font-bold leading-none"
+                style={{
+                  fontSize: "clamp(1rem, 2.5vw, 1.4rem)",
+                  color: "var(--accent)",
+                }}
+              >
+                {value}
+              </p>
               <p
                 className="font-body"
                 style={{

@@ -365,3 +365,16 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ─── Search bar responsive layout ──────────────────────────────────── */
+.search-bar-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.search-bar-btn {
+  width: fit-content;
+  align-self: flex-start;
+}

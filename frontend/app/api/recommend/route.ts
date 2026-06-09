@@ -5,9 +5,12 @@ const API_BASE = process.env.API_URL ?? "http://localhost:8000";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const title = searchParams.get("title");
-  const n = searchParams.get("n") ?? "10";
 
-  if (!title) {
+  // FIX: validate and clamp `n` instead of forwarding it raw
+  const nRaw = parseInt(searchParams.get("n") ?? "10", 10);
+  const n = isNaN(nRaw) || nRaw < 1 ? 10 : Math.min(nRaw, 20);
+
+  if (!title?.trim()) {
     return NextResponse.json({ detail: "title is required" }, { status: 400 });
   }
 

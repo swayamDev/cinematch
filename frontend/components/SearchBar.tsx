@@ -14,15 +14,26 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [autocompleteLoading, setAutocompleteLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectingRef = useRef(false);
+  // When true, the next debounce tick is skipped (set after commit)
+  const suppressRef = useRef(false);
 
   const fetchSuggestions = useCallback(async (q: string) => {
-    if (q.length < 2) {
-      setSuggestions([]);
+    if (suppressRef.current) {
+      suppressRef.current = false;
       return;
     }
+    if (q.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    setAutocompleteLoading(true);
     const results = await searchTitles(q);
+    setAutocompleteLoading(false);
     setSuggestions(results);
     setShowSuggestions(results.length > 0);
   }, []);
@@ -36,6 +47,10 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
   }, [value, fetchSuggestions]);
 
   const commit = (title: string) => {
+    // Cancel pending debounce and suppress the next one triggered by setValue
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    suppressRef.current = true;
+    selectingRef.current = false;
     setValue(title);
     setSuggestions([]);
     setShowSuggestions(false);
@@ -62,12 +77,12 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
 
   return (
     <div style={{ position: "relative", width: "100%" }}>
-      {/* Always a row — input stretches, button sits beside it */}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
+      <div className="search-bar-layout">
         <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
           <label htmlFor="movie-search" className="sr-only">
             Search for a movie
           </label>
+
           <input
             ref={inputRef}
             id="movie-search"
@@ -76,24 +91,47 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
             placeholder="e.g. Inception, Parasite, Toy Story"
             value={value}
             onChange={(e) => {
+              suppressRef.current = false; // user is typing again — allow suggestions
               setValue(e.target.value);
               setActiveIdx(-1);
-              if (e.target.value === "") setShowSuggestions(false);
+              if (e.target.value === "") {
+                setSuggestions([]);
+                setShowSuggestions(false);
+              }
             }}
             onKeyDown={handleKeyDown}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            onBlur={() => {
+              if (selectingRef.current) return;
+              setShowSuggestions(false);
+            }}
             autoComplete="off"
             spellCheck={false}
             aria-label="Movie title"
             aria-autocomplete="list"
             aria-expanded={showSuggestions}
           />
+
+          {autocompleteLoading && (
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                right: 8,
+                bottom: 14,
+                color: "var(--muted-2)",
+                fontSize: 11,
+                animation: "spin 0.7s linear infinite",
+                display: "inline-block",
+              }}
+            >
+              ◌
+            </span>
+          )}
         </div>
 
         <button
-          className="btn-primary"
-          style={{ marginBottom: 3, flexShrink: 0 }}
+          className="btn-primary search-bar-btn"
           onClick={() => value.trim() && commit(value.trim())}
           disabled={loading || !value.trim()}
         >
@@ -119,7 +157,13 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
               key={title}
               role="option"
               aria-selected={i === activeIdx}
-              onMouseDown={() => commit(title)}
+              onMouseDown={() => {
+                selectingRef.current = true;
+              }}
+              onMouseUp={() => commit(title)}
+              onMouseLeave={() => {
+                selectingRef.current = false;
+              }}
               className={`suggestion-item${i === activeIdx ? " suggestion-item--active" : ""}`}
             >
               {title}

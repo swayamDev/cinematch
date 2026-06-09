@@ -17,7 +17,6 @@ import warnings
 import nltk
 import numpy as np
 import pandas as pd
-from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -37,18 +36,18 @@ def _ensure_nltk():
 
 
 _ensure_nltk()
-_stop_words = set(stopwords.words("english"))
+
+# FIX: removed duplicate stop-word import — TfidfVectorizer handles stop-word
+# removal with stop_words="english". Manual NLTK filtering here was redundant
+# (different wordlist) and added confusion. We keep the lemmatiser only.
 _lemmatizer = WordNetLemmatizer()
 
 
 def preprocess(text: str) -> str:
     text = re.sub(r"[^a-zA-Z]", " ", text)
     text = text.lower()
-    words = [
-        _lemmatizer.lemmatize(w)
-        for w in text.split()
-        if w not in _stop_words
-    ]
+    # Lemmatise every token; stop-word removal is delegated to TfidfVectorizer
+    words = [_lemmatizer.lemmatize(w) for w in text.split() if w]
     return " ".join(words)
 
 
@@ -83,6 +82,8 @@ def build_artifacts(csv_path: str, out_dir: str) -> None:
 
     # --- TF-IDF --------------------------------------------------------------
     print("[train] Fitting TF-IDF vectoriser …")
+    # FIX: stop_words="english" is now the sole stop-word removal step
+    # (manual NLTK filtering removed from preprocess() above).
     tfidf = TfidfVectorizer(
         max_features=50_000,
         ngram_range=(1, 2),

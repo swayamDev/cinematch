@@ -9,6 +9,8 @@ import asyncio
 import os
 import pickle
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from functools import partial
 from typing import Optional
 
 import httpx
@@ -18,6 +20,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sklearn.preprocessing import normalize
 
 load_dotenv()
 
@@ -35,10 +38,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # App state (loaded once at startup)
 # ---------------------------------------------------------------------------
 
+@dataclass
 class AppState:
-    df: pd.DataFrame = None
-    indices: pd.Series = None
-    tfidf_matrix = None
+    df: Optional[pd.DataFrame] = field(default=None)
+    indices: Optional[pd.Series] = field(default=None)
+    tfidf_matrix: object = field(default=None)   # scipy sparse
 
 
 state = AppState()
@@ -46,7 +50,8 @@ state = AppState()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load heavy artefacts once at startup; release on shutdown."""
+    """Load heavy artefacts once at startup; pre-normalise matrix for
+    correct cosine similarity; release on shutdown."""
     if not OMDB_API_KEY:
         raise RuntimeError("OMDB_API_KEY is not set. Add it to .env")
 
@@ -63,6 +68,10 @@ async def lifespan(app: FastAPI):
         with open(path, "rb") as f:
             setattr(state, attr, pickle.load(f))
 
+    # FIX: pre-normalise every row to unit length so dot-product == true
+    # cosine similarity (avoids dividing by only one norm at query time).
+    state.tfidf_matrix = normalize(state.tfidf_matrix, norm="l2")
+
     print(f"[startup] Loaded {len(state.df):,} movies.")
     yield
     # nothing to release for pickle-based state
@@ -72,7 +81,7 @@ async def lifespan(app: FastAPI):
 # FastAPI app
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="Movie Recommendation API", version="2.0", lifespan=lifespan)
+app = FastAPI(title="Movie Recommendation API", version="2.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -132,8 +141,10 @@ async def fetch_omdb(client: httpx.AsyncClient, title: str) -> Optional[MovieMet
 
 def _get_recommendations(title: str, top_n: int) -> list[tuple[str, float]]:
     """
-    Return (title, cosine_score) pairs using a normalised dot-product
-    so scores are true cosine similarities in [0, 1].
+    Return (title, cosine_score) pairs.
+
+    The tfidf_matrix is pre-normalised to unit rows at startup, so a
+    plain dot-product gives true cosine similarity in [0, 1].
     """
     matched = [t for t in state.indices.index if str(t).lower() == title.lower()]
     if not matched:
@@ -142,12 +153,8 @@ def _get_recommendations(title: str, top_n: int) -> list[tuple[str, float]]:
     idx = state.indices[matched[0]]
     query_vec = state.tfidf_matrix[idx]
 
-    # Normalise query vector for true cosine similarity
-    query_norm = np.sqrt(query_vec.multiply(query_vec).sum())
-    if query_norm == 0:
-        raise ValueError(f"No usable features for '{title}'.")
-
-    scores = (state.tfidf_matrix @ query_vec.T).toarray().flatten() / query_norm
+    # Both sides are unit-normalised → dot-product == cosine similarity
+    scores = (state.tfidf_matrix @ query_vec.T).toarray().flatten()
 
     top_indices = np.argsort(scores)[::-1]
 
@@ -187,11 +194,16 @@ async def recommend(
     title: str = Query(..., min_length=1),
     n: int = Query(10, ge=1, le=20),
 ):
+    # FIX: offload CPU-bound work to a thread pool so the async event loop
+    # is not blocked during the matrix dot-product + argsort.
     try:
-        recs = _get_recommendations(title, n)
+        loop = asyncio.get_event_loop()
+        recs = await loop.run_in_executor(
+            None, partial(_get_recommendations, title, n)
+        )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    except Exception as exc:
+    except Exception:
         raise HTTPException(status_code=500, detail="Internal recommendation error.")
 
     # Fetch all OMDb metadata concurrently

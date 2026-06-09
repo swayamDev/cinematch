@@ -23,14 +23,19 @@ export default function MovieCard({ item, rank }: MovieCardProps) {
       style={{ animationDelay: `${rank * 50}ms` }}
     >
       {/* Poster */}
-      <div className="relative aspect-[2/3] w-full overflow-hidden" style={{ background: "var(--surface-2)" }}>
+      <div
+        className="relative aspect-[2/3] w-full overflow-hidden"
+        style={{ background: "var(--surface-2)" }}
+      >
+        {/* FIX: removed `unoptimized` — remotePatterns already covers both
+            m.media-amazon.com and placehold.co, so Next.js can optimise
+            these images (resize, convert to WebP, cache at edge). */}
         <Image
           src={poster}
           alt={`${title} poster`}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           className="object-cover"
-          unoptimized
         />
         <span className="rank-badge">#{rank + 1}</span>
         {rating && <span className="rating-badge">★ {rating}</span>}
@@ -67,7 +72,10 @@ export default function MovieCard({ item, rank }: MovieCardProps) {
             <span className="font-display text-xs" style={{ color: "var(--muted)" }}>
               Match
             </span>
-            <span className="font-display text-xs font-bold" style={{ color: "var(--accent)" }}>
+            <span
+              className="font-display text-xs font-bold"
+              style={{ color: "var(--accent)" }}
+            >
               {pct}%
             </span>
           </div>
