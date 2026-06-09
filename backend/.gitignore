@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+# ML artifacts — commit these if small (<50MB each), otherwise use Railway volumes
+# *.pkl
+movies_metadata.csv
