@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FaMagnifyingGlass, FaSpinner } from "react-icons/fa6";
 import { searchTitles } from "@/lib/api";
 
 interface SearchBarProps {
@@ -17,7 +18,10 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const fetchSuggestions = useCallback(async (q: string) => {
-    if (q.length < 2) { setSuggestions([]); return; }
+    if (q.length < 2) {
+      setSuggestions([]);
+      return;
+    }
     const results = await searchTitles(q);
     setSuggestions(results);
     setShowSuggestions(results.length > 0);
@@ -26,7 +30,9 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchSuggestions(value), 280);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [value, fetchSuggestions]);
 
   const commit = (title: string) => {
@@ -46,7 +52,8 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
       setActiveIdx((i) => Math.max(i - 1, -1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (activeIdx >= 0 && suggestions[activeIdx]) commit(suggestions[activeIdx]);
+      if (activeIdx >= 0 && suggestions[activeIdx])
+        commit(suggestions[activeIdx]);
       else if (value.trim()) commit(value.trim());
     } else if (e.key === "Escape") {
       setShowSuggestions(false);
@@ -54,59 +61,59 @@ export default function SearchBar({ onSearch, loading }: SearchBarProps) {
   };
 
   return (
-    <div className="relative w-full">
-      <div className="relative flex items-center gap-4">
-        <input
-          ref={inputRef}
-          className="search-input flex-1"
-          placeholder="e.g. Inception, Parasite, Toy Story…"
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            setActiveIdx(-1);
-            if (e.target.value === "") setShowSuggestions(false);
-          }}
-          onKeyDown={handleKeyDown}
-          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          autoComplete="off"
-          spellCheck={false}
-          aria-label="Movie title"
-          aria-autocomplete="list"
-          aria-expanded={showSuggestions}
-        />
+    <div style={{ position: "relative", width: "100%" }}>
+      {/* Always a row — input stretches, button sits beside it */}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+          <label htmlFor="movie-search" className="sr-only">
+            Search for a movie
+          </label>
+          <input
+            ref={inputRef}
+            id="movie-search"
+            name="movie-search"
+            className="search-input"
+            placeholder="e.g. Inception, Parasite, Toy Story"
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setActiveIdx(-1);
+              if (e.target.value === "") setShowSuggestions(false);
+            }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="Movie title"
+            aria-autocomplete="list"
+            aria-expanded={showSuggestions}
+          />
+        </div>
+
         <button
           className="btn-primary"
+          style={{ marginBottom: 3, flexShrink: 0 }}
           onClick={() => value.trim() && commit(value.trim())}
           disabled={loading || !value.trim()}
         >
           {loading ? (
             <>
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 14,
-                  height: 14,
-                  border: "2.5px solid rgba(223,241,64,0.3)",
-                  borderTopColor: "var(--primary)",
-                  borderRadius: "50%",
-                  animation: "spin 0.7s linear infinite",
-                }}
-              />
+              <FaSpinner style={{ animation: "spin 0.7s linear infinite" }} />
               <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
               Searching
             </>
           ) : (
-            "Recommend →"
+            <>
+              <FaMagnifyingGlass size={13} />
+              Recommend
+            </>
           )}
         </button>
       </div>
 
       {showSuggestions && (
-        <ul
-          role="listbox"
-          className="suggestions-dropdown"
-        >
+        <ul role="listbox" className="suggestions-dropdown">
           {suggestions.map((title, i) => (
             <li
               key={title}

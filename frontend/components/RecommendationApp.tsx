@@ -1,16 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { FaFilm, FaBoltLightning, FaDatabase } from "react-icons/fa6";
 import SearchBar from "./SearchBar";
 import ResultsGrid from "./ResultsGrid";
 import type { RecommendationItem } from "@/types";
 
-const FEATURED = ["Inception", "Parasite", "The Dark Knight", "Toy Story", "Interstellar"];
+const FEATURED = [
+  "Inception",
+  "Parasite",
+  "The Dark Knight",
+  "Toy Story",
+  "Interstellar",
+];
 
 const STATS = [
-  { value: "45k+", label: "Films indexed" },
-  { value: "TF-IDF", label: "Algorithm" },
-  { value: "~200ms", label: "Avg. response" },
+  { value: "45k+", label: "Films indexed", icon: <FaDatabase size={12} /> },
+  { value: "TF-IDF", label: "Algorithm", icon: <FaBoltLightning size={12} /> },
+  {
+    value: "~200ms",
+    label: "Avg. response",
+    icon: <FaBoltLightning size={12} />,
+  },
 ];
 
 export default function RecommendationApp() {
@@ -27,11 +38,15 @@ export default function RecommendationApp() {
     setError(null);
     setResults([]);
     setHasSearched(true);
-
     try {
-      const res = await fetch(`/api/recommend?title=${encodeURIComponent(title)}&n=10`);
+      const res = await fetch(
+        `/api/recommend?title=${encodeURIComponent(title)}&n=10`,
+      );
       const data = await res.json();
-      if (!res.ok) { setError(data?.detail ?? "Something went wrong."); return; }
+      if (!res.ok) {
+        setError(data?.detail ?? "Something went wrong.");
+        return;
+      }
       setResults(data);
     } catch {
       setError("Could not reach the recommendation service.");
@@ -42,42 +57,39 @@ export default function RecommendationApp() {
 
   return (
     <div className="min-h-dvh flex flex-col">
-
-      {/* ── Top nav strip ──────────────────────────────────────────── */}
-      <nav
-        className="px-6 py-4 flex items-center justify-between"
-        style={{ borderBottom: "1.5px solid var(--border)" }}
-      >
-        <div className="flex items-center gap-2">
-          <span
-            style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: "var(--primary)",
-              border: "2px solid var(--accent)",
-            }}
-          />
-          <span
-            className="font-display font-bold text-sm tracking-tight"
-            style={{ color: "var(--text)" }}
-          >
-            CineMatch
-          </span>
-        </div>
-        <div className="hidden sm:flex items-center gap-2">
-          {["FastAPI", "TF-IDF", "Next.js"].map((t) => (
-            <span key={t} className="tech-tag">{t}</span>
-          ))}
+      {/* Nav */}
+      <nav style={{ borderBottom: "1.5px solid var(--border)" }}>
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "14px 20px",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <FaFilm />
+            <span
+              className="font-display font-bold text-sm"
+              style={{ color: "var(--text)", letterSpacing: "-0.01em" }}
+            >
+              CineMatch
+            </span>
+          </div>
         </div>
       </nav>
 
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <header className="px-6 pt-16 pb-14 md:pt-20 md:pb-16 max-w-4xl mx-auto w-full">
-
-        {/* Badge */}
-        <div className="mb-8">
+      {/* Hero */}
+      <header
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          width: "100%",
+          padding: "clamp(32px, 7vw, 72px) 20px clamp(28px, 5vw, 56px)",
+        }}
+      >
+        <div style={{ marginBottom: 20 }}>
           <span className="hero-badge">
             <span
               style={{
@@ -93,12 +105,15 @@ export default function RecommendationApp() {
           </span>
         </div>
 
-        {/* Headline */}
         <h1
-          className="font-display font-extrabold leading-[1.0] tracking-tight mb-4"
+          className="font-display font-extrabold"
           style={{
-            fontSize: "clamp(2.4rem, 7vw, 5rem)",
+            fontSize: "clamp(1.9rem, 5.5vw, 4.2rem)",
+            lineHeight: 1.13,
+            letterSpacing: "-0.025em",
             color: "var(--text)",
+            marginBottom: "clamp(10px, 2vw, 18px)",
+            maxWidth: 760,
           }}
         >
           Find your next{" "}
@@ -108,8 +123,7 @@ export default function RecommendationApp() {
               color: "var(--accent)",
               background: "var(--primary)",
               padding: "0 6px 2px",
-              borderRadius: "4px",
-              display: "inline",
+              borderRadius: 4,
             }}
           >
             favourite film.
@@ -117,92 +131,212 @@ export default function RecommendationApp() {
         </h1>
 
         <p
-          className="font-body text-base leading-relaxed mb-10 max-w-lg"
-          style={{ color: "var(--muted)" }}
+          className="font-body"
+          style={{
+            color: "var(--muted)",
+            maxWidth: 500,
+            fontSize: "clamp(0.85rem, 1.8vw, 0.975rem)",
+            lineHeight: 1.75,
+            marginBottom: "clamp(20px, 4vw, 36px)",
+          }}
         >
-          Enter any movie title. We surface the 10 most similar films using
-          NLP — no account, no tracking, no noise.
+          Enter any movie title and we surface 10 similar films using NLP. No
+          account, no tracking, no noise.
         </p>
 
-        {/* Stats row */}
-        <div className="flex gap-6 mb-10">
-          {STATS.map(({ value, label }) => (
-            <div key={label}>
+        {/* Stats */}
+        <div
+          style={{
+            display: "flex",
+            gap: "clamp(16px, 4vw, 36px)",
+            flexWrap: "wrap",
+            marginBottom: "clamp(20px, 4vw, 36px)",
+          }}
+        >
+          {STATS.map(({ value, label, icon }) => (
+            <div
+              key={label}
+              style={{ display: "flex", flexDirection: "column", gap: 4 }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ color: "var(--accent)", opacity: 0.6 }}>
+                  {icon}
+                </span>
+                <p
+                  className="font-display font-bold leading-none"
+                  style={{
+                    fontSize: "clamp(1rem, 2.5vw, 1.4rem)",
+                    color: "var(--accent)",
+                  }}
+                >
+                  {value}
+                </p>
+              </div>
               <p
-                className="font-display font-bold text-xl leading-none"
-                style={{ color: "var(--accent)" }}
+                className="font-body"
+                style={{
+                  fontSize: "0.7rem",
+                  color: "var(--muted-2)",
+                  letterSpacing: "0.02em",
+                }}
               >
-                {value}
-              </p>
-              <p className="font-body text-xs mt-1" style={{ color: "var(--muted-2)" }}>
                 {label}
               </p>
             </div>
           ))}
         </div>
 
-        {/* Search */}
-        <SearchBar onSearch={handleSearch} loading={loading} />
-
-        {/* Quick-picks */}
-        {!hasSearched && (
-          <div className="flex flex-wrap gap-2 mt-5 items-center">
-            <span className="font-body text-xs" style={{ color: "var(--muted-2)" }}>
-              Try:
-            </span>
-            {FEATURED.map((title) => (
-              <button key={title} className="chip" onClick={() => handleSearch(title)}>
-                {title}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Search box */}
+        <div style={{ maxWidth: 680 }}>
+          <SearchBar onSearch={handleSearch} loading={loading} />
+          {!hasSearched && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 16,
+                alignItems: "center",
+              }}
+            >
+              <span
+                className="font-body"
+                style={{ fontSize: "0.72rem", color: "var(--muted-2)" }}
+              >
+                Try:
+              </span>
+              {FEATURED.map((title) => (
+                <button
+                  key={title}
+                  className="chip"
+                  onClick={() => handleSearch(title)}
+                >
+                  {title}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </header>
 
-      {/* Divider */}
-      {hasSearched && <div className="divider mx-6" />}
+      {hasSearched && (
+        <div
+          style={{
+            height: "1.5px",
+            background: "var(--border)",
+            margin: "0 20px",
+          }}
+        />
+      )}
 
-      {/* ── Results ──────────────────────────────────────────────── */}
-      <main className="flex-1 px-6 py-10 max-w-4xl mx-auto w-full">
-        <ResultsGrid results={results} loading={loading} error={error} query={query} />
+      {/* Results */}
+      <main
+        style={{
+          flex: 1,
+          maxWidth: 1200,
+          margin: "0 auto",
+          width: "100%",
+          padding: hasSearched ? "clamp(20px, 4vw, 44px) 20px" : "0 20px 44px",
+        }}
+      >
+        <ResultsGrid
+          results={results}
+          loading={loading}
+          error={error}
+          query={query}
+        />
 
         {!hasSearched && (
           <div
-            className="rounded-2xl border-2 p-14 text-center"
-            style={{ borderColor: "var(--border)", borderStyle: "dashed" }}
+            style={{
+              border: "2px dashed var(--border)",
+              borderRadius: 16,
+              padding: "clamp(32px, 8vw, 72px) 20px",
+              textAlign: "center",
+            }}
           >
-            <p className="font-display text-5xl mb-4 select-none" role="img" aria-label="Film reel">
-              🎞
-            </p>
-            <p className="font-display font-medium text-base" style={{ color: "var(--muted)" }}>
+            <FaFilm
+              size={40}
+              style={{ color: "var(--border-dark)", margin: "0 auto 16px" }}
+            />
+            <p
+              className="font-display font-medium"
+              style={{
+                color: "var(--muted)",
+                fontSize: "clamp(0.875rem, 2vw, 1rem)",
+              }}
+            >
               Your recommendations will appear here.
             </p>
-            <p className="font-body text-sm mt-2" style={{ color: "var(--muted-2)" }}>
+            <p
+              className="font-body"
+              style={{
+                color: "var(--muted-2)",
+                fontSize: "0.85rem",
+                marginTop: 6,
+              }}
+            >
               Start by typing a film above.
             </p>
           </div>
         )}
       </main>
 
-      {/* ── Footer ───────────────────────────────────────────────── */}
-      <footer
-        className="px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2"
-        style={{ borderTop: "1.5px solid var(--border)" }}
-      >
-        <p className="font-display text-xs font-semibold" style={{ color: "var(--text)" }}>
-          CineMatch
-        </p>
-        <p className="font-body text-xs" style={{ color: "var(--muted-2)" }}>
-          TF-IDF · Cosine Similarity · FastAPI · Next.js 16 ·{" "}
-          <a
-            href="https://www.omdbapi.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "var(--muted)", textDecoration: "underline" }}
+      {/* Footer */}
+      <footer style={{ borderTop: "1.5px solid var(--border)" }}>
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "18px 20px",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <p
+            className="font-display font-semibold"
+            style={{ fontSize: "0.75rem", color: "var(--text)" }}
           >
-            OMDb
-          </a>
-        </p>
+            CineMatch
+          </p>
+          <p
+            className="font-body"
+            style={{ fontSize: "0.72rem", color: "var(--muted-2)" }}
+          >
+            TF-IDF · Cosine Similarity · FastAPI · Next.js ·{" "}
+            <a
+              href="https://www.omdbapi.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--muted)", textDecoration: "underline" }}
+            >
+              OMDb
+            </a>
+          </p>
+          <p
+            className="font-body"
+            style={{ fontSize: "0.72rem", color: "var(--muted-2)" }}
+          >
+            Built by{" "}
+            <a
+              href="https://swayam.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-display font-semibold"
+              style={{
+                color: "var(--accent)",
+                textDecoration: "none",
+                background: "var(--primary)",
+                fontStyle: "italic",
+              }}
+            >
+              Swayam
+            </a>
+          </p>
+        </div>
       </footer>
     </div>
   );
